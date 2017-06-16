@@ -10,6 +10,7 @@ from threading import Thread
 import pickle
 import collections
 import ast
+import sys
 
 from utilities import *
 from NetworkSimulatorFacade import NetworkSimulatorFacade
@@ -879,10 +880,18 @@ class MainWindow(tk.Frame):
         self.simulationScene.refresh()
 
 if __name__ == "__main__":
+    autoLoad = False
+
+    if len(sys.argv) > 1:
+        autoLoad = (sys.argv[1] == "load")
+            
     root = tk.Tk()
     simulator = DirectSyncronizedSimulatorFacade()
     server = fluidsim_server.Server("localhost", 8883, simulator)
     main = MainWindow(simulator, root)
+    if autoLoad:
+        main.load()
+        
     main.pack(side="top", fill="both", expand=True)
     serverThread = Thread(target=server.start)
     serverThread.start()
