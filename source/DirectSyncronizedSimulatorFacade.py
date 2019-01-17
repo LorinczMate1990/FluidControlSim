@@ -59,6 +59,12 @@ class DirectSyncronizedSimulatorFacade(AbstractSimulatorFacade):
         self.pickablePart = pickle.loads(serial)
         self.containers = self.pickablePart['containers']
         self.activeElements = self.pickablePart['activeElements']
+        # Restoring loggers
+        for index, container in enumerate(self.containers):
+            self.logManager.monitor(self.__i2c(index), container)
+            
+        for index, element in enumerate(self.activeElements):
+            self.logManager.monitor(str(self.__i2ae(index)), element)
     
     def __init__(self):
         self.containers = []
@@ -92,7 +98,7 @@ class DirectSyncronizedSimulatorFacade(AbstractSimulatorFacade):
         cont1.attachPipe(element)
         cont2.attachPipe(element)
         self.activeElements[index] = element
-        self.logManager.monitor(str(self.__i2ae(index))+"_"+str(ID1)+"-"+str(ID2), element)    
+        self.logManager.monitor(str(self.__i2ae(index)), element)
         return self.__i2ae(index)
     
     @syncronize

@@ -10,6 +10,7 @@ from threading import Thread
 import pickle
 import collections
 import ast
+import sys
 
 from utilities import *
 from NetworkSimulatorFacade import NetworkSimulatorFacade
@@ -469,6 +470,7 @@ class ContainerObject(DragableGraphSimulationObject):
         self.width = self.minWidth
         self.height = self.minHeight
         self.pad = 10
+        self.detailedDescription = True # For printscreens, you should set this to False
         
     def subscribeForPositionModification(self, obj):
         self.positionModificationEvent.subscribe(obj)
@@ -516,12 +518,13 @@ class ContainerObject(DragableGraphSimulationObject):
         
     def __generateContainerCaption(self):
         text = "ID: {:d}\n".format(self.ID)
-        text += "\n"
-        text += "Vol.: {:0.2f}\n".format(self.volume)
-        text += "Temp.: {:0.2f}\n".format(self.temperature)
-        text += "\n"
-        text += "Act. level: {:0.2f}\n".format(self.waterLevel)
-        text += "Max. level: {:0.2f}".format(self.maxWaterLevel)
+        if self.detailedDescription:
+            text += "\n"
+            text += "Vol.: {:0.2f}\n".format(self.volume)
+            text += "Temp.: {:0.2f}\n".format(self.temperature)
+            text += "\n"
+            text += "Act. level: {:0.2f}\n".format(self.waterLevel)
+            text += "Max. level: {:0.2f}".format(self.maxWaterLevel)
         return text
         
     def __refreshWidthAndHeight(self, textId):
@@ -728,7 +731,7 @@ class SimulationScene(tk.Frame):
         tk.Frame.__init__(self, root)
         self.simulator = simulator
         self.objects = {}
-        self.canvas = tk.Canvas(self, width=500, height=500)
+        self.canvas = tk.Canvas(self, width=500, height=500, background="white")
         self.canvas.pack()
         self.objectSelector = Selector()
     
@@ -840,7 +843,18 @@ class TopMenu(tk.Frame):
     
     def isRefreshOn(self):
         return self.refreshBool.get()
+
+class SceneHandler(object):
+    def save(self, simulator, simulationScene):
+        cont={'simulator':simulator.serialize(), 'simulationScene':simulationScene.getContainersPos()}
+        with open('dump.txt', 'w') as f:
+            pickle.dump(cont, f)
         
+    def load(self):
+        with open('dump.txt', 'r') as f:
+            cont = pickle.load(f)
+        return cont['simulator'], cont['simulationScene']
+
 class MainWindow(tk.Frame):
     def __init__(self, simulator, root):
         tk.Frame.__init__(self, root)
@@ -861,15 +875,14 @@ class MainWindow(tk.Frame):
         self.simulationScene.setMaximumNumberOfSelectedObjects(2)
     
     def save(self):
-        cont={'simulator':self.simulator.serialize(), 'simulationScene':self.simulationScene.getContainersPos()}
-        with open('dump.txt', 'w') as f:
-            pickle.dump(cont, f)
-        
+        handler = SceneHandler()
+        handler.save(self.simulator, self.simulationScene)
+                
     def load(self):
-        with open('dump.txt', 'r') as f:
-            cont = pickle.load(f)
-        self.simulator.deserialize(cont['simulator'])
-        self.simulationScene.setContainersPos(cont['simulationScene'])
+        handler = SceneHandler()
+        simulatorData, sceneData = handler.load()
+        self.simulator.deserialize(simulatorData)
+        self.simulationScene.setContainersPos(sceneData)
     
     def refreshSimulation(self):
         if self.topMenu.isSimulationOn():
@@ -879,10 +892,18 @@ class MainWindow(tk.Frame):
         self.simulationScene.refresh()
 
 if __name__ == "__main__":
+    autoLoad = False
+
+    if len(sys.argv) > 1:
+        autoLoad = (sys.argv[1] == "load")
+            
     root = tk.Tk()
     simulator = DirectSyncronizedSimulatorFacade()
     server = fluidsim_server.Server("localhost", 8883, simulator)
     main = MainWindow(simulator, root)
+    if autoLoad:
+        main.load()
+        
     main.pack(side="top", fill="both", expand=True)
     serverThread = Thread(target=server.start)
     serverThread.start()

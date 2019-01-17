@@ -297,8 +297,6 @@ class SecondOrderDiffRamp(AbstractRamp):
         
         c = y_0-Sp
         
-        print alpha, Sp, y_0, c
-        
         self.Y = lambda t: c*math.exp(-1./alpha * t) + Sp
         self.dY = lambda t: -1./alpha*c*math.exp(-1./alpha * t)
     
@@ -496,24 +494,23 @@ class Container(FluidsimObject):
 
 class FileLogHandler:
     def __init__(self, prefix, logID, fluidSimObject):
-        filename = str(prefix)+"_"+str(logID)+".log"
+        self.filename = str(prefix)+str(logID)+".log"
         self.fluidSimObject = fluidSimObject
-        self.file = open(filename, "w")
-        firstLog = fluidSimObject.log()
-        self.keys = firstLog.keys()
-        self.file.write("timestamp")
-        for key in self.keys:
-            self.file.write(","+str(key))
-        self.file.write(linesep)
-        self.file.flush()
+        with open(self.filename, 'w') as f:
+            firstLog = fluidSimObject.log()
+            self.keys = firstLog.keys()
+            f.write("timestamp")
+            for key in self.keys:
+                f.write(","+str(key))
+            f.write(linesep)
     
     def createLog(self, timestamp):
         actLog = self.fluidSimObject.log()
-        self.file.write(str(timestamp))
-        for key in self.keys:
-            self.file.write(","+str(actLog[key]))
-        self.file.write(linesep)
-        self.file.flush()
+        with open(self.filename, 'a') as f:
+            f.write(str(timestamp))
+            for key in self.keys:
+                f.write(","+str(actLog[key]))
+            f.write(linesep)
         
 class LogManager:
     def __init__(self, logHandlerTypeList):
